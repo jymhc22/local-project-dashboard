@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>지자체 사업 신청 심사</title>
+<style>
+:root{font-family:system-ui,'Malgun Gothic',sans-serif;color:#172238;background:#f5f7fb}*{box-sizing:border-box}body{margin:0}.wrap{max-width:1100px;margin:35px auto;padding:0 18px}h1{font-size:29px;margin-bottom:8px}.muted{color:#627087}.toolbar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:25px 0}.toolbar label{font-weight:700}.toolbar input{padding:11px;border:1px solid #cbd5e1;border-radius:8px;font-size:16px;width:170px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:15px}.card{background:white;border:1px solid #e2e8f0;border-radius:14px;padding:20px;box-shadow:0 2px 8px #17223808}.top{display:flex;justify-content:space-between;gap:8px;align-items:center}.name{font-weight:800;font-size:20px}.badge{font-size:13px;font-weight:800;padding:5px 10px;border-radius:99px}.approve{background:#dcfce7;color:#166534}.reject{background:#fee2e2;color:#991b1b}.project{min-height:48px;margin:16px 0}.amount{font-weight:800;font-size:21px}.stats{display:flex;gap:10px;flex-wrap:wrap}.stat{background:white;border-radius:10px;padding:12px 18px;border:1px solid #e2e8f0}section{margin-top:38px}iframe{width:100%;height:470px;border:1px solid #cbd5e1;border-radius:12px;background:white}#sheetHint{padding:30px;background:white;border:1px dashed #94a3b8;border-radius:12px}small{color:#627087}
+</style>
+</head><body><main class="wrap">
+<h1>지자체 사업 신청 심사 대시보드</h1><p class="muted">신청목록.json 기반 · 한도액 초과 여부 자동판정 (시연용)</p>
+<div class="toolbar"><label for="limit">테스트 한도액 (원)</label><input id="limit" type="number" min="0" step="10000" value="600000"><span class="muted">신청액 ≤ 한도액: 승인 / 초과: 반려</span></div>
+<div id="stats" class="stats"></div><section><div id="cards" class="grid">데이터를 불러오는 중...</div></section>
+<section><h2>보고서 5사실 정합성 매트릭스</h2><p class="muted">Google Sheets에서 '웹에 게시'한 임베드 URL을 아래 코드의 SHEET_EMBED_URL에 입력하세요.</p><div id="sheetArea"></div></section>
+<p><small>주의: 화면의 승인/반려는 입력된 테스트 한도액을 기준으로 한 예비 판정이며, 공식 행정 승인 결정이 아닙니다. 첨부파일에 한도액과 예산 단위는 명시되어 있지 않습니다.</small></p>
+</main><script>
+// Google Sheets > 파일 > 공유 > 웹에 게시 > 삽입(임베드)에서 iframe src 값만 복사하세요.
+const SHEET_EMBED_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTwwuQtKpxi1vS2UpIur0JpjOyNsa4r5_ZXudpqJrxkymrASz47Hc8kp9jYgnZRPkTyhL8gDGnNr1lF/pubhtml?widget=true&amp;headers=false';
+const won = n => Number(n).toLocaleString('ko-KR');
+const limitInput = document.getElementById('limit');
+let items = [];
+function render(){
+ const limit = Number(limitInput.value);
+ const approved = items.filter(x => Number(x['신청액']) <= limit).length;
+ document.getElementById('stats').innerHTML = `<div class="stat">전체 <b>${items.length}건</b></div><div class="stat">승인 <b>${approved}건</b></div><div class="stat">반려 <b>${items.length-approved}건</b></div>`;
+ const cards = document.getElementById('cards'); cards.replaceChildren();
+ for(const item of items){
+  const ok = Number(item['신청액']) <= limit;
+  const card = document.createElement('article'); card.className='card';
+  const top=document.createElement('div');top.className='top';
+  const name=document.createElement('span');name.className='name';name.textContent=item['지자체명'];
+  const badge=document.createElement('span');badge.className='badge '+(ok?'approve':'reject');badge.textContent=ok?'승인':'반려';top.append(name,badge);
+  const project=document.createElement('div');project.className='project';project.textContent=item['사업명'];
+  const amount=document.createElement('div');amount.className='amount';amount.textContent=won(item['예산']);
+  const label=document.createElement('small');label.textContent='예산 (원 단위 가정)';
+  const request=document.createElement('p');request.className='muted';request.textContent='신청액: '+won(item['신청액']);
+  card.append(top,project,label,amount,request);cards.append(card);
+ }
+}
+limitInput.addEventListener('input',render);
+fetch('./신청목록.json').then(r=>{if(!r.ok)throw Error('JSON 파일을 찾지 못했습니다.');return r.json()}).then(data=>{items=data;render()}).catch(e=>{document.getElementById('cards').textContent='불러오기 실패: '+e.message});
+const sheetArea=document.getElementById('sheetArea');
+if(SHEET_EMBED_URL.startsWith('https://docs.google.com/spreadsheets/')){
+ const frame=document.createElement('iframe');frame.src=SHEET_EMBED_URL;frame.title='보고서 5사실 정합성 매트릭스';frame.loading='lazy';sheetArea.append(frame);
+}else{const hint=document.createElement('div');hint.id='sheetHint';hint.textContent='아직 Google Sheets 주소가 연결되지 않았습니다. 아래 안내에 따라 임베드 URL을 넣어주세요.';sheetArea.append(hint)}
+</script></body></html>
